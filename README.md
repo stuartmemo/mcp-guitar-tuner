@@ -1,6 +1,6 @@
-# Guitar Tuner MCP Server
+# Fine Tuning - Guitar Tuner MCP Server
 
-A Claude Code MCP plugin for guitar tuning with real-time microphone pitch detection on macOS.
+An MCP plugin for guitar tuning with real-time microphone pitch detection on macOS.
 
 ## Prerequisites
 
