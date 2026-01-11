@@ -3,9 +3,8 @@ import { GUITAR_FREQ_MIN, GUITAR_FREQ_MAX, DEFAULT_AUDIO_CONFIG } from '../types
 // Type for pitchfinder's detector function
 type PitchDetector = (samples: Float32Array) => number | null;
 
-interface YINOptions {
+interface ACF2PlusOptions {
   sampleRate: number;
-  threshold?: number;
 }
 
 export class PitchDetectorProcessor {
@@ -20,7 +19,7 @@ export class PitchDetectorProcessor {
     this.sampleRate = sampleRate;
     // Need at least 2048 samples for accurate low frequency detection
     // Low E (82 Hz) has a period of ~538 samples at 44100 Hz
-    // YIN needs at least 2 periods, so 2048 is a good minimum
+    // ACF2+ needs sufficient samples for autocorrelation
     this.bufferSize = 4096;
     this.accumulatedSamples = new Float32Array(0);
     this.rmsThreshold = 0.01; // Ignore quiet signals
@@ -29,11 +28,11 @@ export class PitchDetectorProcessor {
   async initialize(): Promise<void> {
     // Dynamically import pitchfinder
     const pitchfinder = await import('pitchfinder');
-    const YIN = pitchfinder.YIN as (options: YINOptions) => PitchDetector;
+    // Use ACF2+ algorithm - more reliable than YIN for guitar frequencies
+    const ACF2PLUS = pitchfinder.ACF2PLUS as (options: ACF2PlusOptions) => PitchDetector;
 
-    this.detectPitch = YIN({
+    this.detectPitch = ACF2PLUS({
       sampleRate: this.sampleRate,
-      threshold: 0.15, // Good balance for guitar
     });
   }
 
