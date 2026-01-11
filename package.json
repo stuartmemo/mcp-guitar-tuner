@@ -1,0 +1,29 @@
+{
+  "name": "mcp-guitar-tuner",
+  "version": "1.0.0",
+  "description": "Claude Code MCP server for guitar tuning with microphone pitch detection",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-guitar-tuner": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "mic": "^2.1.2",
+    "pitchfinder": "^2.3.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
