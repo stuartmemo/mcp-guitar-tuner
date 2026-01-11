@@ -3,8 +3,12 @@ import { GUITAR_FREQ_MIN, GUITAR_FREQ_MAX, DEFAULT_AUDIO_CONFIG } from '../types
 // Type for pitchfinder's detector function
 type PitchDetector = (samples: Float32Array) => number | null;
 
-interface ACF2PlusOptions {
+interface AMDFOptions {
   sampleRate: number;
+  minFrequency: number;
+  maxFrequency: number;
+  sensitivity: number;
+  ratio: number;
 }
 
 export class PitchDetectorProcessor {
@@ -19,7 +23,6 @@ export class PitchDetectorProcessor {
     this.sampleRate = sampleRate;
     // Need at least 2048 samples for accurate low frequency detection
     // Low E (82 Hz) has a period of ~538 samples at 44100 Hz
-    // ACF2+ needs sufficient samples for autocorrelation
     this.bufferSize = 4096;
     this.accumulatedSamples = new Float32Array(0);
     this.rmsThreshold = 0.01; // Ignore quiet signals
@@ -28,11 +31,16 @@ export class PitchDetectorProcessor {
   async initialize(): Promise<void> {
     // Dynamically import pitchfinder
     const pitchfinder = await import('pitchfinder');
-    // Use ACF2+ algorithm - more reliable than YIN for guitar frequencies
-    const ACF2PLUS = pitchfinder.ACF2PLUS as (options: ACF2PlusOptions) => PitchDetector;
 
-    this.detectPitch = ACF2PLUS({
+    // Use AMDF algorithm with explicit frequency range for guitar
+    // Covers E2 (82 Hz) to E4 (330 Hz) plus harmonics/fretted notes
+    const AMDF = pitchfinder.AMDF as (options: AMDFOptions) => PitchDetector;
+    this.detectPitch = AMDF({
       sampleRate: this.sampleRate,
+      minFrequency: 75,   // Just below low E (82 Hz)
+      maxFrequency: 500,  // Well above high E (330 Hz)
+      sensitivity: 0.15,  // Slightly higher sensitivity for high strings
+      ratio: 3,           // Lower ratio = more lenient detection
     });
   }
 
@@ -67,7 +75,7 @@ export class PitchDetectorProcessor {
       return null;
     }
 
-    // Detect pitch
+    // Detect pitch using AMDF
     const frequency = this.detectPitch(analysisBuffer);
 
     // Filter to guitar frequency range

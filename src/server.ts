@@ -1,6 +1,4 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { TUNING_PRESETS, getTuningIds } from './tuning/tunings.js';
 import { tuningManager } from './tuning/session-manager.js';
 
 // Helper to create a JSON text response
@@ -16,41 +14,18 @@ export function createGuitarTunerServer(): McpServer {
     version: '1.0.0',
   });
 
-  // Tool 1: list_tunings - List all available tuning presets
-  server.tool(
-    'list_tunings',
-    'List all available guitar tuning presets',
-    {},
-    async () => {
-      const tunings = TUNING_PRESETS.map((t) => ({
-        id: t.id,
-        name: t.name,
-        description: t.description,
-        strings: t.strings.map((s) => `${s.note.name}${s.note.octave}`).join(' '),
-      }));
-
-      return jsonResponse({ tunings });
-    }
-  );
-
-  // Tool 2: start_tuning - Start listening to microphone for guitar tuning
+  // Tool 1: start_tuning - Start listening to microphone for guitar tuning
   server.tool(
     'start_tuning',
-    'Start listening to microphone for guitar tuning. Specify a tuning preset (default: standard).',
-    {
-      tuning: z
-        .string()
-        .optional()
-        .default('standard')
-        .describe(`Tuning preset ID. Available: ${getTuningIds().join(', ')}`),
-    },
-    async ({ tuning }) => {
-      const result = await tuningManager.startSession(tuning);
+    'Start listening to microphone for guitar tuning (standard tuning: E A D G B E).',
+    {},
+    async () => {
+      const result = await tuningManager.startSession('standard');
       return jsonResponse(result);
     }
   );
 
-  // Tool 3: get_pitch - Wait for and return detected pitch with tuning guidance
+  // Tool 2: get_pitch - Wait for and return detected pitch with tuning guidance
   server.tool(
     'get_pitch',
     'Wait for a guitar note to be played and return tuning guidance. Blocks until a stable pitch is detected (up to 30 seconds). Must call start_tuning first.',
@@ -72,7 +47,7 @@ export function createGuitarTunerServer(): McpServer {
     }
   );
 
-  // Tool 4: stop_tuning - Stop tuning session and release microphone
+  // Tool 3: stop_tuning - Stop tuning session and release microphone
   server.tool(
     'stop_tuning',
     'Stop the tuning session and release the microphone.',

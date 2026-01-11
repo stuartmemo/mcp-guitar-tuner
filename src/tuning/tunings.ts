@@ -6,8 +6,8 @@ export function midiToFrequency(midiNumber: number): number {
   return A4_FREQUENCY * Math.pow(2, (midiNumber - A4_MIDI) / 12);
 }
 
-// Helper to create a note
-function note(name: string, octave: number, midiNumber: number): Note {
+// Helper to create a note (exported for testing)
+export function note(name: string, octave: number, midiNumber: number): Note {
   return {
     name,
     octave,

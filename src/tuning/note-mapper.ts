@@ -17,42 +17,52 @@ export function calculateCents(detectedFreq: number, targetFreq: number): number
 export function findClosestString(
   frequency: number,
   tuning: TuningPreset
-): { stringNumber: number; centsOff: number; noteName: string } | null {
+): { stringNumber: number; centsOff: number; noteName: string; correctedFrequency: number } | null {
   // Filter out frequencies outside guitar range
   if (frequency < GUITAR_FREQ_MIN || frequency > GUITAR_FREQ_MAX) {
     return null;
   }
 
-  let closestString: number | null = null;
-  let smallestCentsDiff = Infinity;
-  let closestNoteName = '';
+  // Try the frequency as-is, then try octave correction (doubling)
+  // This fixes octave-detection errors common with high strings
+  const frequenciesToTry = [frequency, frequency * 2];
 
-  for (const guitarString of tuning.strings) {
-    const cents = calculateCents(frequency, guitarString.note.frequency);
-    const absCents = Math.abs(cents);
+  for (const freqToTry of frequenciesToTry) {
+    // Skip if doubled frequency is outside range
+    if (freqToTry > GUITAR_FREQ_MAX) continue;
 
-    // Only consider if within 100 cents (1 semitone) of target
-    // This prevents matching wrong octaves
-    if (absCents < smallestCentsDiff && absCents <= 100) {
-      smallestCentsDiff = absCents;
-      closestString = guitarString.stringNumber;
-      closestNoteName = `${guitarString.note.name}${guitarString.note.octave}`;
+    let closestString: number | null = null;
+    let smallestCentsDiff = Infinity;
+    let closestNoteName = '';
+
+    for (const guitarString of tuning.strings) {
+      const cents = calculateCents(freqToTry, guitarString.note.frequency);
+      const absCents = Math.abs(cents);
+
+      // Only consider if within 100 cents (1 semitone) of target
+      // This prevents matching wrong octaves
+      if (absCents < smallestCentsDiff && absCents <= 100) {
+        smallestCentsDiff = absCents;
+        closestString = guitarString.stringNumber;
+        closestNoteName = `${guitarString.note.name}${guitarString.note.octave}`;
+      }
+    }
+
+    if (closestString !== null) {
+      // Get actual cents (with sign) for the closest string
+      const targetString = tuning.strings.find((s) => s.stringNumber === closestString)!;
+      const actualCents = calculateCents(freqToTry, targetString.note.frequency);
+
+      return {
+        stringNumber: closestString,
+        centsOff: Math.round(actualCents * 10) / 10, // Round to 1 decimal
+        noteName: closestNoteName,
+        correctedFrequency: freqToTry,
+      };
     }
   }
 
-  if (closestString === null) {
-    return null;
-  }
-
-  // Get actual cents (with sign) for the closest string
-  const targetString = tuning.strings.find((s) => s.stringNumber === closestString)!;
-  const actualCents = calculateCents(frequency, targetString.note.frequency);
-
-  return {
-    stringNumber: closestString,
-    centsOff: Math.round(actualCents * 10) / 10, // Round to 1 decimal
-    noteName: closestNoteName,
-  };
+  return null;
 }
 
 // Determine tuning status from cents deviation
@@ -105,7 +115,7 @@ export function createPitchResult(
     };
   }
 
-  // Find closest string
+  // Find closest string (with octave correction for high strings)
   const closest = findClosestString(frequency, tuning);
 
   if (closest === null) {
@@ -123,8 +133,11 @@ export function createPitchResult(
   const status = getTuningStatus(closest.centsOff);
   const inTune = status === 'in-tune';
 
+  // Use corrected frequency if octave correction was applied
+  const displayFrequency = closest.correctedFrequency;
+
   return {
-    frequency: Math.round(frequency * 10) / 10,
+    frequency: Math.round(displayFrequency * 10) / 10,
     noteName: closest.noteName,
     centsDeviation: closest.centsOff,
     closestString: closest.stringNumber,
